@@ -33,7 +33,7 @@ def handleInput(argv):
 				model = argv[i+1]
 			except IndexError:
 				sys.exit("You need to provide a model file path")
-	if len(argv) == 3:
+	if len(argv) == 2:
 		return training_set
 	return (training_set, training_labels, test_set, test_labels, model)
 

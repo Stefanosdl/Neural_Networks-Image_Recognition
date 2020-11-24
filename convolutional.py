@@ -8,55 +8,41 @@ from keras import layers
 from keras import backend as K
 from tensorflow.keras.models import Model
 from sklearn.model_selection import train_test_split
+from classifier import plot_loss
 
-def convolutionalAutoencoder(filter_pixel=3, filters=32, layers_=3):
+def convolutionalAutoencoder(filter_pixel=3, filters=256, layers_=5):
 	print("[INFO] building autoencoder...")
-	droprate = 0.25
+	counter = 0
 	kernel_s = (filter_pixel, filter_pixel)
 
 	input_img = keras.Input(shape=(28, 28, 1))
-	# filters = 32
-	# filters_array = [32, 16, 8]
 	filters_list = []
 	filters_list.append(filters)
 	for i in range(0, layers_ - 1):
 		filters_list.append(filters_list[i] // 2)
 
 	x = input_img
-	for f in filters_list:
+	for f in filters_list[::-1]:
+		counter += 1
 		x = layers.Conv2D(f, kernel_s, activation='relu', padding='same')(x)
 		x = layers.BatchNormalization()(x)
-		# x = layers.MaxPooling2D(strides=None, padding='same')(x)
-		x = layers.Dropout(droprate)(x)
+		if counter%2 == 0:
+			x = layers.MaxPooling2D((2,2), padding='same')(x)
 
-	# flatten the network and then construct our latent vector
-	volumeSize = K.int_shape(x)
-	x = layers.Flatten()(x)
-	latentDim = 16
-	latent = layers.Dense(latentDim)(x)
-	# build the encoder model
-	encoded = Model(input_img, latent, name="encoded")
-	# start building the decoder model which will accept the
-	# output of the encoder as its inputs
-	latentInputs = keras.Input(shape=(latentDim,))
-	x = layers.Dense(np.prod(volumeSize[1:]))(latentInputs)
-	x = layers.Reshape((volumeSize[1], volumeSize[2], volumeSize[3]))(x)
+	counter = 0
+
 	# loop over our number of filters again, but this time in
 	# reverse order
-	for f in filters_list[::-1]:
-		# apply a CONV_TRANSPOSE => RELU => BN operation
+	for f in filters_list:
+		counter += 1
 		x = layers.Conv2DTranspose(f, kernel_s, activation='relu', padding='same')(x)
 		x = layers.BatchNormalization()(x)
+		if counter%2 == 0:
+			x = layers.UpSampling2D((2,2))(x)
 
 	# apply a single CONV_TRANSPOSE layer used to recover the
-	# original depth of the image
-	depth = 1
-	x = layers.Conv2DTranspose(depth, kernel_s, padding="same")(x)
-	outputs = layers.Activation("sigmoid")(x)
-	# build the decoder model
-	decoded = Model(latentInputs, outputs, name="decoded")
-	# our autoencoder is the encoder + decoder
-	autoencoder = Model(input_img, decoded(encoded(input_img)), name="autoencoder")
+	x = layers.Conv2DTranspose(1, kernel_s, activation="sigmoid", padding="same")(x)
+	autoencoder = Model(input_img, x, name="autoencoder")
 	return autoencoder
 
 # training 
@@ -66,7 +52,8 @@ def training(autoencoder, all_images, epochs=10, batch_size=128):
 	# now in df we have a dataframe with size: dimensions x number_of_images with all of our images
 	opt = keras.optimizers.Adam(lr=1e-3)
 	# loss = 'binary_crossentropy'
-	autoencoder.compile(loss="mse", optimizer=opt, metrics = ['accuracy'])
+	#  metrics = ['accuracy']
+	autoencoder.compile(loss="mse", optimizer=opt)
 
 	# To train it we will need the data
 	train, test = train_test_split(df, test_size=0.33, random_state=42)
@@ -121,16 +108,7 @@ def plotting(history, decoded_imgs, test, epochs=10):
 	plt.show()
 
 	# Plot 3
-	# construct a plot that plots and saves the training history
-	N = np.arange(0, epochs)
-	plt.style.use("ggplot")
-	plt.figure()
-	plt.plot(N, history.history["loss"], label="train_loss")
-	plt.plot(N, history.history["val_loss"], label="val_loss")
-	plt.title("Training Loss and Accuracy")
-	plt.xlabel("Epoch #")
-	plt.ylabel("Loss/Accuracy")
-	plt.legend(loc="lower left")
-	plt.show()
+	plot_name = "./logs/autoencoder_train_val_loss.png"
+	plot_loss(history, plot_name)
 
 	return 0
