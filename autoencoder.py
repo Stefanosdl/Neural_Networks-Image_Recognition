@@ -21,8 +21,14 @@ def main(argv):
 		''')
 
 		if option == "1":
-			epochs, batch_size, filter_pixel, filters = [int(i) for i in input("Insert epochs, batch size, filter_pixel, filters: ").split(",")]
-			autoencoder = convolutionalAutoencoder(all_images, int(filter_pixel), int(filters))
+			epochs, batch_size, filter_pixel, filters, layers = [int(i) for i in input("Insert epochs, batch size, filter_pixel, filters, layers: ").split(",")]
+			if layers > 5:
+				print("You need to provide less than or equal to 5 layers")
+				continue
+			if layers < 1:
+				print("Please provide a positive number of layers")
+				continue
+			autoencoder = convolutionalAutoencoder(int(filter_pixel), int(filters), int(layers))
 			(history, decoded_imgs, test) = training(autoencoder, all_images, int(epochs), int(batch_size))
 		elif option == "2":
 			plotting(history, decoded_imgs, test, int(epochs))

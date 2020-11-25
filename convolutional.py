@@ -51,8 +51,6 @@ def training(autoencoder, all_images, epochs=10, batch_size=128):
 	df = pd.DataFrame.from_dict(all_images, orient='index')
 	# now in df we have a dataframe with size: dimensions x number_of_images with all of our images
 	opt = keras.optimizers.Adam(lr=1e-3)
-	# loss = 'binary_crossentropy'
-	#  metrics = ['accuracy']
 	autoencoder.compile(loss="mse", optimizer=opt)
 
 	# To train it we will need the data
